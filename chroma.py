@@ -13,7 +13,7 @@ CHUNK_SIZE = 1000 # длина окна
 CHUNK_OVERLAP = 100 # длина перекрытия
 
 # Функция выдает эмбеддинги
-async def get_embeddings():
+def get_embeddings():
     model_kwargs = {'device': 'cpu'}
     embeddings_hf = HuggingFaceEmbeddings(
       model_name='intfloat/multilingual-e5-large',
@@ -22,7 +22,7 @@ async def get_embeddings():
     return embeddings_hf
 
 # Загрузка документов
-async def load_documents(folder_path):
+def load_documents(folder_path):
     pdf_files = []
     txt_files = []
     for file_name in os.listdir(folder_path):
@@ -45,7 +45,7 @@ async def load_documents(folder_path):
     return pdf_pages + txt_pages
 
 # Разбиение документа на чанги
-async def split_text(pages: list[Document]):
+def split_text(pages: list[Document]):
     text_splitter = RecursiveCharacterTextSplitter(
         chunk_size=CHUNK_SIZE,
         chunk_overlap=CHUNK_OVERLAP,
@@ -56,7 +56,7 @@ async def split_text(pages: list[Document]):
     return chunks
 
 # Создание векторной базы данных
-async def save_to_chroma(chunks: list[Document], user_id):
+def save_to_chroma(chunks: list[Document], user_id):
     # Очищает датасет
     if os.path.exists(os.path.join(CHROMA_PATH, str(user_id))):
        shutil.rmtree(os.path.join(CHROMA_PATH, str(user_id)))
@@ -68,8 +68,11 @@ async def save_to_chroma(chunks: list[Document], user_id):
     db.persist()
     return f"Файлы разделены на {len(chunks)} чанков и сохранены в векторную базы данных."
 
-async def chroma_main(folder_path, user_id):
+def chroma_main(folder_path, user_id):
     documents = load_documents(folder_path)
     chunks = split_text(documents)
     message = save_to_chroma(chunks, user_id)
     return message
+
+if __name__ == '__main__':
+    chroma_main()

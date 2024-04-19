@@ -22,7 +22,7 @@ del_file = None
 @dp.message(CommandStart())
 async def get_start(message: types.Message):
     name = message.from_user.username
-    await message.answer(f'Привет, {name}. Давай попробуем ответить на твой вопрос')
+    await message.answer(f'Привет, {name}.\nДавай попробуем ответить на твой вопрос')
 
 # Создание папки юзера и загрузки документа
 @dp.message(F.document)
@@ -91,13 +91,13 @@ async def process_file_deletion(message: types.Message):
 async def handle_confirmation(message: types.Message):
     user_id = message.from_user.id
     user_folder = os.path.join(chroma.DATA_PATH, str(user_id))
-    if message.text == "Да":
+    if message.text == "Уверен, удаляй!":
         global del_file
         file_name = del_file
         file_path = os.path.join(user_folder, file_name)
         os.remove(file_path)
         await message.reply(f"Файл {file_name} успешно удален.")
-    else:
+    elif message.text == "Нет, я еще подумаю":
         await message.reply("Удаление отменено.")
 
 # Вопрос к LLM
@@ -106,7 +106,7 @@ async def cmd_answer(message: types.Message):
     user_id = message.from_user.id
     user_folder = os.path.join(chroma.DATA_PATH, str(user_id))
     await message.answer(f"Вопрос принят.\nПридется немного подождать, все LLM работают локально и на CPU")
-    await message.answer(await chroma.chroma_main(user_folder, user_id))
+    await message.answer(chroma.chroma_main(user_folder, user_id))
     await message.answer(await main(message.text, user_id))
 
 # Запуск бота
