@@ -2,7 +2,7 @@ import asyncio
 import logging
 import os
 from aiogram.filters.command import CommandStart, Command
-from aiogram.types import ReplyKeyboardMarkup, KeyboardButton, InlineKeyboardButton, InlineKeyboardMarkup, Message, CallbackQuery
+from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup, Message, CallbackQuery
 from aiogram import Bot, Dispatcher, F
 from aiogram.exceptions import TelegramBadRequest
 from aiogram.enums import ParseMode
@@ -102,8 +102,6 @@ def callback_query_condition(callback):
 async def process_file_deletion(callback: CallbackQuery):
     global del_file
     del_file = callback.data
-    # keyboard_buttons = [[KeyboardButton(text='Уверен, удаляй!')], [KeyboardButton(text='Нет, я еще подумаю')]]
-    # keyboard = ReplyKeyboardMarkup(keyboard=keyboard_buttons, resize_keyboard=True, one_time_keyboard=True)
     inline_buttons = [[InlineKeyboardButton(text='Точно, удаляй', callback_data='Точно, удаляй')],
                         [InlineKeyboardButton(text='Нет, я еще подумаю', callback_data='Нет, я еще подумаю')]]
     keyboard = InlineKeyboardMarkup(inline_keyboard=inline_buttons, resize_keyboard=True)
