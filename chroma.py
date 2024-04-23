@@ -53,25 +53,27 @@ def split_text(pages: list[Document]):
     )
     chunks = text_splitter.split_documents(pages)
     print(f"Разбили {len(pages)} документов на {len(chunks)} чанков.")
-
-    return chunks
+    ids = [str(i) for i in range(1, len(chunks) + 1)]
+    
+    return chunks, ids
 
 # Создание векторной базы данных
-def save_to_chroma(chunks: list[Document], user_id):
+def save_to_chroma(chunks: list[Document], user_id, ids):
+    
     # Создает новые базы данных для документов
     db = Chroma.from_documents(
-       chunks, get_embeddings(), persist_directory=os.path.join(CHROMA_PATH, str(user_id))
+       chunks, get_embeddings(), persist_directory=os.path.join(CHROMA_PATH, str(user_id)), ids=ids
     )
     db.persist()
 
-    return f"Файлы разделены на {len(chunks)} чанков и сохранены в векторную базы данных."
+    return 
 
 def chroma_main(folder_path, user_id):
     documents = load_documents(folder_path)
-    chunks = split_text(documents)
-    message = save_to_chroma(chunks, user_id)
+    chunks, ids = split_text(documents)
+    save_to_chroma(chunks, user_id, ids)
 
-    return message
+    return ids
 
 if __name__ == '__main__':
     chroma_main()
