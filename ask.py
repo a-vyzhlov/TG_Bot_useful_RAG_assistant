@@ -1,6 +1,7 @@
 from langchain_community.vectorstores import Chroma
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_openai import ChatOpenAI
+import shutil
 import chroma
 import os
 
@@ -41,4 +42,9 @@ async def main(query_text, user_id):
     sources = [doc.page_content for doc, _score in results]
     rating_sources = '\n\n'.join([f"{i}. '{item}'" for i, item in enumerate(sources, 1)])
     formatted_response = f"Ответ: {response_text}\n\nДанные взяты из 3 отрывков:\n\n{rating_sources}"
+    
+    #Очистка базы данных
+    db.delete_collection()
+    db.persist()
+    shutil.rmtree(chroma.CHROMA_PATH, str(user_id))
     return(formatted_response)

@@ -57,9 +57,9 @@ def split_text(pages: list[Document]):
 
 # Создание векторной базы данных
 def save_to_chroma(chunks: list[Document], user_id):
-    # Очищает датасет
-    if os.path.exists(os.path.join(CHROMA_PATH, str(user_id))):
-       shutil.rmtree(os.path.join(CHROMA_PATH, str(user_id)))
+    # # Очищает датасет
+    # if os.path.exists(os.path.join(CHROMA_PATH, str(user_id))):
+    #    shutil.rmtree(os.path.join(CHROMA_PATH, str(user_id)))
 
     # Создает новые базы данных для документов
     db = Chroma.from_documents(

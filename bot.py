@@ -1,6 +1,8 @@
 import asyncio
 import logging
 import os
+from aiogram.fsm.state import State, StatesGroup
+from aiogram.fsm.context import FSMContext
 from aiogram.filters.command import CommandStart, Command
 from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup, Message, CallbackQuery
 from aiogram import Bot, Dispatcher, F
@@ -19,9 +21,13 @@ dp = Dispatcher()
 # Для глобальной переменной 
 del_file = None
 
+# Состояния для избежания лишних промтов
+class antiflood(StatesGroup):
+    generating_message = State()
+
 # Запуск бота
 @dp.message(CommandStart())
-async def get_start(message: Message):
+async def get_start(message: Message, state: FSMContext):
     name = message.from_user.username
     await message.answer(f'Привет, {name}.\nДавай попробуем разобраться с твоей базой данных. Отправляй мне файлы!')
 
@@ -74,6 +80,12 @@ async def cmd_clear(message: Message, bot: Bot):
         if ex.message == "Bad Request: message to delete not found":
             print("Все сообщения удалены")
 
+# # Остановка промта
+# @dp.message(Сommand=['stop'])
+# async def stop(message: types.Message):
+#     # Остановить выполнение другой команды, например, /start
+#     await dp.process_message(types.Update(message))
+
 # Запрос на удаление файла, на выходе - в дефолт исходе файлы в кнопках
 @dp.message(Command("delete"))
 async def delete_file(message: Message):
@@ -124,14 +136,22 @@ async def handle_confirmation(callback: CallbackQuery):
         await callback.answer()
         await callback.message.answer("Удаление отменено.")
 
+
+# Состояние для антифлуда
+@dp.message(antiflood.generating_message)
+async def anti_flood(message: Message, state: FSMContext):
+    await message.reply('Вы еще не получили ответа на свой прошлый вопрос.\nСначала дождитесь ответа, затем задавайте новый вопрос')
+
 # Вопрос к LLM
 @dp.message(F.text)
-async def cmd_answer(message: Message):
+async def cmd_answer(message: Message, state: FSMContext):
     user_id = message.from_user.id
     user_folder = os.path.join(chroma.DATA_PATH, str(user_id))
+    await state.set_state(antiflood.generating_message)
     await message.answer(f"Вопрос принят.\nПридется немного подождать, все LLM работают локально и на CPU")
     await message.answer(chroma.chroma_main(user_folder, user_id))
     await message.answer(await main(message.text, user_id))
+    await state.clear()
 
 # Запуск бота
 async def start():
