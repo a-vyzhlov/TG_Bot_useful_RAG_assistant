@@ -1,6 +1,5 @@
 
 import os
-import shutil
 from langchain_community.embeddings import HuggingFaceEmbeddings
 from langchain_community.document_loaders import TextLoader, PyPDFLoader
 from langchain.text_splitter import RecursiveCharacterTextSplitter
@@ -10,7 +9,7 @@ from langchain.schema import Document
 CHROMA_PATH = "chroma" # путь к векторной БД
 DATA_PATH = "data" # путь в данных
 CHUNK_SIZE = 1000 # длина окна
-CHUNK_OVERLAP = 100 # длина перекрытия
+CHUNK_OVERLAP = 50 # длина перекрытия
 
 # Функция выдает эмбеддинги
 def get_embeddings():
@@ -18,7 +17,8 @@ def get_embeddings():
     embeddings_hf = HuggingFaceEmbeddings(
       model_name='intfloat/multilingual-e5-large',
       model_kwargs=model_kwargs
-    )
+      )
+    
     return embeddings_hf
 
 # Загрузка документов
@@ -49,6 +49,7 @@ def split_text(pages: list[Document]):
     text_splitter = RecursiveCharacterTextSplitter(
         chunk_size=CHUNK_SIZE,
         chunk_overlap=CHUNK_OVERLAP,
+        separators=['\n\n','\n','.','']
     )
     chunks = text_splitter.split_documents(pages)
     print(f"Разбили {len(pages)} документов на {len(chunks)} чанков.")
@@ -57,21 +58,19 @@ def split_text(pages: list[Document]):
 
 # Создание векторной базы данных
 def save_to_chroma(chunks: list[Document], user_id):
-    # # Очищает датасет
-    # if os.path.exists(os.path.join(CHROMA_PATH, str(user_id))):
-    #    shutil.rmtree(os.path.join(CHROMA_PATH, str(user_id)))
-
     # Создает новые базы данных для документов
     db = Chroma.from_documents(
        chunks, get_embeddings(), persist_directory=os.path.join(CHROMA_PATH, str(user_id))
     )
     db.persist()
+
     return f"Файлы разделены на {len(chunks)} чанков и сохранены в векторную базы данных."
 
 def chroma_main(folder_path, user_id):
     documents = load_documents(folder_path)
     chunks = split_text(documents)
     message = save_to_chroma(chunks, user_id)
+
     return message
 
 if __name__ == '__main__':

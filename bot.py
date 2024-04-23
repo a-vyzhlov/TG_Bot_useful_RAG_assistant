@@ -1,22 +1,14 @@
-import asyncio
-import logging
 import os
 from aiogram.fsm.state import State, StatesGroup
 from aiogram.fsm.context import FSMContext
 from aiogram.filters.command import CommandStart, Command
 from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup, Message, CallbackQuery
-from aiogram import Bot, Dispatcher, F
+from aiogram import Bot, Dispatcher, F, Router
 from aiogram.exceptions import TelegramBadRequest
-from aiogram.enums import ParseMode
-from dotenv import find_dotenv, load_dotenv
 from ask import main
 import chroma
 
-load_dotenv(find_dotenv())
-
-bot = Bot(token=os.getenv('TOKEN'), parse_mode=ParseMode.HTML)
-
-dp = Dispatcher()
+router = Router()
 
 # Для глобальной переменной 
 del_file = None
@@ -26,13 +18,13 @@ class antiflood(StatesGroup):
     generating_message = State()
 
 # Запуск бота
-@dp.message(CommandStart())
+@router.message(CommandStart())
 async def get_start(message: Message, state: FSMContext):
     name = message.from_user.username
     await message.answer(f'Привет, {name}.\nДавай попробуем разобраться с твоей базой данных. Отправляй мне файлы!')
 
 # Создание папки юзера и загрузки документа
-@dp.message(F.document)
+@router.message(F.document)
 async def handle_document(message: Message):
     user_id = message.from_user.id
     file_name = message.document.file_name
@@ -46,7 +38,7 @@ async def handle_document(message: Message):
         await message.reply("Вы загрузили файл некоррентного формата. Я обрабатываю файлы (.pdf/.txt)")
 
 # Проверка, сколько файлов в папке юзера
-@dp.message(Command("check"))
+@router.message(Command("check"))
 async def check_documents(message: Message):
     user_id = message.from_user.id
     if os.path.exists(os.path.join(chroma.DATA_PATH, str(user_id))):
@@ -62,13 +54,13 @@ async def check_documents(message: Message):
         await message.reply(f"Вы пока ничего не загружали")
 
 # Помощь
-@dp.message(Command("help"))
+@router.message(Command("help"))
 async def check_documents(message: Message):
     await message.answer("Последовательность действий при первом обращении:\n  1. Загружаете один или несколько файлов(.pdf/.txt)\n\
   2. Задаете вопрос обычным сообщением\n\nПри повторном обращении:\n  1. Проверьте какие файлы уже загружены командой /check\n  \
 2. Удалить ненужные файлы командой /delete и загрузить новые или пропустить этот пункт\n  3. Задаем вопрос")
 
-@dp.message(Command('clear'))
+@router.message(Command('clear'))
 async def cmd_clear(message: Message, bot: Bot):
     try:
         # Все сообщения, начиная с текущего и до первого (message_id = 0)
@@ -87,7 +79,7 @@ async def cmd_clear(message: Message, bot: Bot):
 #     await dp.process_message(types.Update(message))
 
 # Запрос на удаление файла, на выходе - в дефолт исходе файлы в кнопках
-@dp.message(Command("delete"))
+@router.message(Command("delete"))
 async def delete_file(message: Message):
     user_id = message.from_user.id
     user_folder =  os.path.join(chroma.DATA_PATH, str(user_id)) 
@@ -110,7 +102,7 @@ def callback_query_condition(callback):
 
 
 # На вход - файл, который нужно удалить, на выход - уточнение да/нет
-@dp.callback_query(callback_query_condition)
+@router.callback_query(callback_query_condition)
 async def process_file_deletion(callback: CallbackQuery):
     global del_file
     del_file = callback.data
@@ -121,7 +113,7 @@ async def process_file_deletion(callback: CallbackQuery):
     await callback.message.answer(f"Вы уверены, что хотите удалить файл {callback.data}?", reply_markup=keyboard)
 
 # Удаление/отмена удаления
-@dp.callback_query(lambda callback_query: callback_query.data in ["Точно, удаляй", "Нет, я еще подумаю"])
+@router.callback_query(lambda callback_query: callback_query.data in ["Точно, удаляй", "Нет, я еще подумаю"])
 async def handle_confirmation(callback: CallbackQuery):
     user_id = callback.from_user.id
     user_folder = os.path.join(chroma.DATA_PATH, str(user_id))
@@ -138,12 +130,12 @@ async def handle_confirmation(callback: CallbackQuery):
 
 
 # Состояние для антифлуда
-@dp.message(antiflood.generating_message)
+@router.message(antiflood.generating_message)
 async def anti_flood(message: Message, state: FSMContext):
     await message.reply('Вы еще не получили ответа на свой прошлый вопрос.\nСначала дождитесь ответа, затем задавайте новый вопрос')
 
 # Вопрос к LLM
-@dp.message(F.text)
+@router.message(F.text)
 async def cmd_answer(message: Message, state: FSMContext):
     user_id = message.from_user.id
     user_folder = os.path.join(chroma.DATA_PATH, str(user_id))
@@ -152,15 +144,3 @@ async def cmd_answer(message: Message, state: FSMContext):
     await message.answer(chroma.chroma_main(user_folder, user_id))
     await message.answer(await main(message.text, user_id))
     await state.clear()
-
-# Запуск бота
-async def start():
-    await bot.delete_webhook(drop_pending_updates=True)
-    await dp.start_polling(bot, allowed_updates=dp.resolve_used_update_types())
-
-if __name__ == "__main__": 
-    logging.basicConfig(level=logging.INFO)
-    try:
-        asyncio.run(start())
-    except KeyboardInterrupt:
-        print('Exit')
